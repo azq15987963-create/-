@@ -5,10 +5,25 @@
 <title>活動相框</title>
 
 <style>
+
 body{
 font-family:sans-serif;
 text-align:center;
 padding:40px;
+background:#f5f5f5;
+}
+
+#dropArea{
+border:2px dashed #aaa;
+border-radius:10px;
+padding:40px;
+background:white;
+cursor:pointer;
+}
+
+#dropArea.dragover{
+border-color:#2196f3;
+background:#e3f2fd;
 }
 
 canvas{
@@ -22,14 +37,19 @@ margin-top:20px;
 padding:10px 20px;
 font-size:16px;
 }
+
 </style>
+
 </head>
 
 <body>
 
-<h2>上傳照片套活動相框</h2>
+<h2>上傳照片套關燈一小時活動相框</h2>
 
-<input type="file" id="upload">
+<div id="dropArea">
+<p>點擊上傳照片</p>
+<input type="file" id="upload" accept="image/*" style="display:none">
+</div>
 
 <br>
 
@@ -44,7 +64,51 @@ font-size:16px;
 const frame = new Image();
 frame.src = "frame.png";
 
-document.getElementById("upload").addEventListener("change", function(e){
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+
+const dropArea = document.getElementById("dropArea");
+const upload = document.getElementById("upload");
+
+frame.onload = function(){
+
+canvas.width = frame.width;
+canvas.height = frame.height;
+
+ctx.drawImage(frame,0,0);
+
+}
+
+// 點擊上傳
+dropArea.addEventListener("click",()=>{
+upload.click();
+});
+
+// 拖曳效果
+dropArea.addEventListener("dragover",(e)=>{
+e.preventDefault();
+dropArea.classList.add("dragover");
+});
+
+dropArea.addEventListener("dragleave",()=>{
+dropArea.classList.remove("dragover");
+});
+
+dropArea.addEventListener("drop",(e)=>{
+e.preventDefault();
+dropArea.classList.remove("dragover");
+
+const file = e.dataTransfer.files[0];
+loadImage(file);
+});
+
+// 選擇檔案
+upload.addEventListener("change",(e)=>{
+const file = e.target.files[0];
+loadImage(file);
+});
+
+function loadImage(file){
 
 const reader = new FileReader();
 
@@ -54,14 +118,25 @@ const img = new Image();
 
 img.onload = function(){
 
-const canvas = document.getElementById("canvas");
-const ctx = canvas.getContext("2d");
+ctx.clearRect(0,0,canvas.width,canvas.height);
 
-canvas.width = img.width;
-canvas.height = img.height;
+// 填滿比例
+let scale = Math.max(
+canvas.width / img.width,
+canvas.height / img.height
+);
 
-ctx.drawImage(img,0,0);
-ctx.drawImage(frame,0,0,img.width,img.height);
+let newWidth = img.width * scale;
+let newHeight = img.height * scale;
+
+let x = (canvas.width - newWidth)/2;
+let y = (canvas.height - newHeight)/2;
+
+// 畫照片
+ctx.drawImage(img,x,y,newWidth,newHeight);
+
+// 畫相框
+ctx.drawImage(frame,0,0,canvas.width,canvas.height);
 
 }
 
@@ -69,16 +144,15 @@ img.src = event.target.result;
 
 }
 
-reader.readAsDataURL(e.target.files[0]);
+reader.readAsDataURL(file);
 
-});
+}
 
 function download(){
 
-const canvas = document.getElementById("canvas");
-
 const link = document.createElement("a");
-link.download = "photo.png";
+
+link.download = "photo-frame.png";
 link.href = canvas.toDataURL();
 
 link.click();
