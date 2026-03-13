@@ -1,165 +1,181 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta charset="UTF-8">
-<title>活動相框</title>
-
-<style>
-
-body{
-font-family:sans-serif;
-text-align:center;
-padding:40px;
-background:#f5f5f5;
-}
-
-#dropArea{
-border:2px dashed #aaa;
-border-radius:10px;
-padding:40px;
-background:white;
-cursor:pointer;
-}
-
-#dropArea.dragover{
-border-color:#2196f3;
-background:#e3f2fd;
-}
-
-canvas{
-max-width:90%;
-margin-top:20px;
-border:1px solid #ccc;
-}
-
-button{
-margin-top:20px;
-padding:10px 20px;
-font-size:16px;
-}
-
-</style>
-
+    <meta charset="UTF-8">
+    <title>活動相框 - 可移動照片版</title>
+    <style>
+        body { font-family: sans-serif; text-align: center; padding: 40px; background: #f5f5f5; }
+        #dropArea { border: 2px dashed #aaa; border-radius: 10px; padding: 40px; background: white; cursor: pointer; margin-bottom: 20px; }
+        #dropArea.dragover { border-color: #2196f3; background: #e3f2fd; }
+        canvas { max-width: 90%; border: 1px solid #ccc; background: #fff; cursor: move; }
+        button { margin-top: 20px; padding: 10px 20px; font-size: 16px; cursor: pointer; }
+        .instructions { color: #666; font-size: 14px; margin-bottom: 10px; }
+    </style>
 </head>
 
 <body>
 
-<h2>上傳照片套關燈一小時活動相框</h2>
+    <h2>關燈一小時活動相框</h2>
+    <p class="instructions">上傳後，可直接在畫布上「拖拽移動」照片位置</p>
 
-<div id="dropArea">
-<p>點擊上傳照片</p>
-<input type="file" id="upload" accept="image/*" style="display:none">
-</div>
+    <div id="dropArea">
+        <p>點擊或拖拽上傳照片</p>
+        <input type="file" id="upload" accept="image/*" style="display:none">
+    </div>
 
-<br>
+    <canvas id="canvas"></canvas>
 
-<canvas id="canvas"></canvas>
+    <br>
+    <button onclick="download()">下載照片</button>
 
-<br>
+    <script>
+        const canvas = document.getElementById("canvas");
+        const ctx = canvas.getContext("2d");
+        const dropArea = document.getElementById("dropArea");
+        const upload = document.getElementById("upload");
 
-<button onclick="download()">下載照片</button>
+        const frame = new Image();
+        frame.src = "frame.png"; // 請確保路徑正確
 
-<script>
+        let userImg = null;
+        let isDragging = false;
+        let startX, startY;
+        let imgX = 0, imgY = 0; // 照片目前的座標
+        let imgDisplayW = 0, imgDisplayH = 0; // 照片縮放後的大小
 
-const frame = new Image();
-frame.src = "frame.png";
+        frame.onload = function() {
+            canvas.width = frame.width;
+            canvas.height = frame.height;
+            drawAll(); 
+        };
 
-const canvas = document.getElementById("canvas");
-const ctx = canvas.getContext("2d");
+        // 繪製邏輯：先畫照片，再疊加相框
+        function drawAll() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            if (userImg) {
+                ctx.drawImage(userImg, imgX, imgY, imgDisplayW, imgDisplayH);
+            }
+            
+            // 相框永遠在最上層
+            ctx.drawImage(frame, 0, 0, canvas.width, canvas.height);
+        }
 
-const dropArea = document.getElementById("dropArea");
-const upload = document.getElementById("upload");
+        // 讀取檔案
+        function loadImage(file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = new Image();
+                img.onload = function() {
+                    userImg = img;
+                    
+                    // 初始比例：填滿畫布
+                    let scale = Math.max(canvas.width / img.width, canvas.height / img.height);
+                    imgDisplayW = img.width * scale;
+                    imgDisplayH = img.height * scale;
+                    
+                    // 初始位置：置中
+                    imgX = (canvas.width - imgDisplayW) / 2;
+                    imgY = (canvas.height - imgDisplayH) / 2;
+                    
+                    drawAll();
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
 
-frame.onload = function(){
+        // --- 滑鼠交互事件 ---
 
-canvas.width = frame.width;
-canvas.height = frame.height;
+        canvas.addEventListener('mousedown', (e) => {
+            if (!userImg) return;
+            isDragging = true;
+            // 取得滑鼠在畫布上的相對座標
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            startX = (e.clientX - rect.left) * scaleX;
+            startY = (e.clientY - rect.top) * scaleY;
+        });
 
-ctx.drawImage(frame,0,0);
+        window.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+            
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            const mouseX = (e.clientX - rect.left) * scaleX;
+            const mouseY = (e.clientY - rect.top) * scaleY;
 
-}
+            // 計算移動距離並更新座標
+            const dx = mouseX - startX;
+            const dy = mouseY - startY;
 
-// 點擊上傳
-dropArea.addEventListener("click",()=>{
-upload.click();
-});
+            imgX += dx;
+            imgY += dy;
 
-// 拖曳效果
-dropArea.addEventListener("dragover",(e)=>{
-e.preventDefault();
-dropArea.classList.add("dragover");
-});
+            startX = mouseX;
+            startY = mouseY;
 
-dropArea.addEventListener("dragleave",()=>{
-dropArea.classList.remove("dragover");
-});
+            drawAll();
+        });
 
-dropArea.addEventListener("drop",(e)=>{
-e.preventDefault();
-dropArea.classList.remove("dragover");
+        window.addEventListener('mouseup', () => {
+            isDragging = false;
+        });
 
-const file = e.dataTransfer.files[0];
-loadImage(file);
-});
+        // 支援手機觸控
+        canvas.addEventListener('touchstart', (e) => {
+            if (!userImg) return;
+            isDragging = true;
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            startX = (e.touches[0].clientX - rect.left) * scaleX;
+            startY = (e.touches[0].clientY - rect.top) * scaleY;
+            e.preventDefault();
+        }, {passive: false});
 
-// 選擇檔案
-upload.addEventListener("change",(e)=>{
-const file = e.target.files[0];
-loadImage(file);
-});
+        canvas.addEventListener('touchmove', (e) => {
+            if (!isDragging) return;
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            const mouseX = (e.touches[0].clientX - rect.left) * scaleX;
+            const mouseY = (e.touches[0].clientY - rect.top) * scaleY;
+            
+            imgX += (mouseX - startX);
+            imgY += (mouseY - startY);
+            startX = mouseX; startY = mouseY;
+            drawAll();
+            e.preventDefault();
+        }, {passive: false});
 
-function loadImage(file){
+        canvas.addEventListener('touchend', () => isDragging = false);
 
-const reader = new FileReader();
+        // --- 原有上傳邏輯 ---
 
-reader.onload = function(event){
+        dropArea.addEventListener("click", () => upload.click());
+        dropArea.addEventListener("dragover", (e) => { e.preventDefault(); dropArea.classList.add("dragover"); });
+        dropArea.addEventListener("dragleave", () => dropArea.classList.remove("dragover"));
+        dropArea.addEventListener("drop", (e) => {
+            e.preventDefault();
+            dropArea.classList.remove("dragover");
+            const file = e.dataTransfer.files[0];
+            if(file) loadImage(file);
+        });
+        upload.addEventListener("change", (e) => {
+            const file = e.target.files[0];
+            if(file) loadImage(file);
+        });
 
-const img = new Image();
-
-img.onload = function(){
-
-ctx.clearRect(0,0,canvas.width,canvas.height);
-
-// 填滿比例
-let scale = Math.max(
-canvas.width / img.width,
-canvas.height / img.height
-);
-
-let newWidth = img.width * scale;
-let newHeight = img.height * scale;
-
-let x = (canvas.width - newWidth)/2;
-let y = (canvas.height - newHeight)/2;
-
-// 畫照片
-ctx.drawImage(img,x,y,newWidth,newHeight);
-
-// 畫相框
-ctx.drawImage(frame,0,0,canvas.width,canvas.height);
-
-}
-
-img.src = event.target.result;
-
-}
-
-reader.readAsDataURL(file);
-
-}
-
-function download(){
-
-const link = document.createElement("a");
-
-link.download = "photo-frame.png";
-link.href = canvas.toDataURL();
-
-link.click();
-
-}
-
-</script>
+        function download() {
+            const link = document.createElement("a");
+            link.download = "earth-hour-photo.png";
+            link.href = canvas.toDataURL("image/png");
+            link.click();
+        }
+    </script>
 
 </body>
 </html>
