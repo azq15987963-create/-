@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>活動相框</title>
+
+<style>
+body{
+font-family:sans-serif;
+text-align:center;
+padding:40px;
+}
+
+canvas{
+max-width:90%;
+margin-top:20px;
+border:1px solid #ccc;
+}
+
+button{
+margin-top:20px;
+padding:10px 20px;
+font-size:16px;
+}
+</style>
+</head>
+
+<body>
+
+<h2>上傳照片套活動相框</h2>
+
+<input type="file" id="upload">
+
+<br>
+
+<canvas id="canvas"></canvas>
+
+<br>
+
+<button onclick="download()">下載照片</button>
+
+<script>
+
+const frame = new Image();
+frame.src = "frame.png";
+
+document.getElementById("upload").addEventListener("change", function(e){
+
+const reader = new FileReader();
+
+reader.onload = function(event){
+
+const img = new Image();
+
+img.onload = function(){
+
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+
+canvas.width = img.width;
+canvas.height = img.height;
+
+ctx.drawImage(img,0,0);
+ctx.drawImage(frame,0,0,img.width,img.height);
+
+}
+
+img.src = event.target.result;
+
+}
+
+reader.readAsDataURL(e.target.files[0]);
+
+});
+
+function download(){
+
+const canvas = document.getElementById("canvas");
+
+const link = document.createElement("a");
+link.download = "photo.png";
+link.href = canvas.toDataURL();
+
+link.click();
+
+}
+
+</script>
+
+</body>
+</html>
